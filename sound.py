@@ -1,9 +1,9 @@
-
+import time
 from playsound import playsound
 import requests
 import configparser
 import base64
-import pygame
+import vlc
 from subprocess import call
 from eyed3 import id3
 from PyQt5 import QtCore, QtGui,QtWidgets
@@ -13,7 +13,8 @@ from PyQt5.QtGui import QPixmap,QIcon
 import sys
 import os
 import UIdesign
-
+from mutagen.mp3 import MP3
+import threading
 
 # pic = QtGui.Label(window)
 
@@ -29,10 +30,54 @@ import UIdesign
 # tag.link('cool.mp3')
 # print(tag.getArtist())
 
+class moveSlider(threading.Thread):
+
+	def __init__(self,appObj):
+
+		threading.Thread.__init__(self)
+		self.appObj = appObj
+		self.seconds=0
+
+	def run(self):
+		while(self.seconds<self.appObj.duration and self.appObj.pushButton.state=="Play"):
+			time.sleep(1)
+			self.seconds = self.seconds+1
+			self.appObj.MusicVal.setValue(self.seconds)
+
+
+class dataFetcher(threading.Thread):
+
+	def __init__(self,appObj):
+
+		# print("here")
+		threading.Thread.__init__(self)
+		self.appObj = appObj
+
+	def run(self):
+		_translate = QtCore.QCoreApplication.translate
+		tag = id3.Tag() 
+		tag.parse(self.appObj.fileName)
+
+		artistName = "Unavailable"
+		albumName = "Unavailable"
+		songName = "Unavailable"
+
+		if(tag.artist is not None):
+			artistName = tag.artist
+		
+		if(tag.album is not None):
+			albumName = tag.album
+
+		if(tag.title is not None):
+			songName = tag.title
+
+		self.appObj.Artist.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:8pt; font-weight:600; color:#ffffff;\">"+artistName+"</span></p></body></html>"))
+		self.appObj.SongName.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:9pt; font-weight:600; color:#ffffff;\">"+songName+"</span></p></body></html>"))
+		self.appObj.AlbumName.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:8pt; font-weight:600; color:#ffffff;\">"+albumName+"</span></p></body></html>"))       
+
 class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 	
 	def onClick(self):
-
 		if self.currentTrack != self.fileName:
 			self.count=0
 
@@ -40,20 +85,30 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 			self.pushButton.state= "Play"
 			self.pushButton.setText("||")
 			if self.count==0:
-				wavFile = self.fileName[:len(self.fileName)-4]+'.wav'
-				print(wavFile)
-				call(['ffmpeg', '-i', self.fileName,wavFile])
-				pygame.mixer.music.load(wavFile)
+				
+				if(self.progressBar is not None):
+					self.progressBar.terminate()
+				self.MusicVal.setValue(0)
+				dataFetchThread = dataFetcher(self)
+				dataFetchThread.start()
 				self.currentTrack = self.fileName
+				self.track = vlc.MediaPlayer('file://'+self.currentTrack)
+				self.duration = MP3(self.fileName).info.length
+				self.MusicVal.setMaximum(self.duration)
+				self.progressBar = moveSlider(self)		
+				self.progressBar.start()
+
+				self.track.play()
 				self.count=1
-				pygame.mixer.music.play()
 			else:
-				pygame.mixer.music.unpause()
+				self.track.pause()
 		else:
 			self.pushButton.state = "Pause"
 			self.pushButton.setText(">")
-			pygame.mixer.music.pause()
+			self.track.pause()
 
+
+		print(self.artist)
 	def __init__(self,parent=None):
 
 		super(ExampleApp,self).__init__(parent)
@@ -61,16 +116,18 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 		self.currentTrack = None
 		self.setupUi(self)
 		self.setUI()
+		self.progressBar = None
+		self.artist = None
 
 	def setUI(self):
 		self.count=0
 		self.pushButton.setText(">")
-		self.MusicVal.setMaximum(30)
+		# self.MusicVal.setMaximum(30)
 		self.pushButton.state = "Pause"
 
 		self.pushButton.clicked.connect(self.onClick)
 		self.pixelImage = QPixmap('img.jpg')
-		self.pixelImage= self.pixelImage.scaled(64,64)
+		self.pixelImage= self.pixelImage.scaled(128,128)
 		# self.pixelImage.scaledToHeight(30)
 		self.albumArt.setPixmap(self.pixelImage)
 		print(self.MusicVal.setValue(0))
@@ -84,7 +141,7 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 	def selectTrack(self):
 		self.fileName = self.MusicList.currentItem().text()
 		self.fileName = self.currentFolder+'/'+self.fileName
-		pygame.mixer.music.load(self.fileName)
+		
 		
 
 	def showDialog(self):
@@ -102,7 +159,7 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 
 
 def main():
-	pygame.mixer.init()
+	
 	app = QtWidgets.QApplication(sys.argv)
 	form = ExampleApp()
 
