@@ -39,10 +39,13 @@ class moveSlider(threading.Thread):
 		self.seconds=0
 
 	def run(self):
+		song = self.appObj.currentTrack
 		while(self.seconds<self.appObj.duration and self.appObj.pushButton.state=="Play"):
 			time.sleep(1)
 			self.seconds = self.seconds+1
 			self.appObj.MusicVal.setValue(self.seconds)
+			if(song != self.appObj.fileName):
+				break
 
 
 class dataFetcher(threading.Thread):
@@ -86,8 +89,6 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 			self.pushButton.setText("||")
 			if self.count==0:
 				
-				if(self.progressBar is not None):
-					self.progressBar.terminate()
 				self.MusicVal.setValue(0)
 				dataFetchThread = dataFetcher(self)
 				dataFetchThread.start()
