@@ -36,15 +36,16 @@ class moveSlider(threading.Thread):
 
 		threading.Thread.__init__(self)
 		self.appObj = appObj
-		self.seconds=0
+		
 
 	def run(self):
+		self.appObj.seconds=0
 		song = self.appObj.currentTrack
-		while(self.seconds<self.appObj.duration and self.appObj.pushButton.state=="Play"):
+		while(self.appObj.seconds<self.appObj.duration and self.appObj.songStatus=="Play"):
 			time.sleep(1)
-			self.seconds = self.seconds+1
-			self.appObj.MusicVal.setValue(self.seconds)
-			if(song != self.appObj.fileName):
+			self.appObj.seconds = self.appObj.seconds+1
+			self.appObj.MusicVal.setValue(self.appObj.seconds)
+			if(song != self.appObj.fileName or self.appObj.songStatus =='Stop' ):
 				break
 
 
@@ -84,8 +85,8 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 		if self.currentTrack != self.fileName:
 			self.count=0
 
-		if self.pushButton.state is "Pause":
-			self.pushButton.state= "Play"
+		if self.songStatus is "Pause" or self.songStatus is 'Stopped':
+			self.songStatus= "Play"
 			self.pushButton.setText("||")
 			if self.count==0:
 				
@@ -104,7 +105,7 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 			else:
 				self.track.pause()
 		else:
-			self.pushButton.state = "Pause"
+			self.songStatus = "Pause"
 			self.pushButton.setText(">")
 			self.track.pause()
 
@@ -121,10 +122,13 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 		self.artist = None
 
 	def setUI(self):
+
 		self.count=0
+		self.seconds=0
 		self.pushButton.setText(">")
 		# self.MusicVal.setMaximum(30)
-		self.pushButton.state = "Pause"
+		self.songStatus = "Pause"
+		self.stopButton.clicked.connect(self.stopMusic)
 
 		self.pushButton.clicked.connect(self.onClick)
 		self.pixelImage = QPixmap('img.jpg')
@@ -136,14 +140,29 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 		self.addDirectory.clicked.connect(self.showDialog)
 		
 		self.MusicList.currentItemChanged.connect(self.selectTrack)
+		self.MusicVal.sliderReleased.connect(self.seekTrack)
 		# fname = QtWidgets.QFileDialog.getOpenFileName(None, 'Open file', '/home')
 		# self.showMaximized()
+
+	def seekTrack(self):
+		seekVal = self.MusicVal.value()
+		self.track.set_time(seekVal*1000)
+		self.MusicVal.setValue(seekVal)
+		self.seconds = seekVal
+		print(seekVal)
 
 	def selectTrack(self):
 		self.fileName = self.MusicList.currentItem().text()
 		self.fileName = self.currentFolder+'/'+self.fileName
 		
-		
+	
+	def stopMusic(self):
+		self.track.stop()
+		self.songStatus = "Stopped"
+		self.MusicVal.setValue(0)
+		self.pushButton.setText(">")
+		self.currentTrack = None
+
 
 	def showDialog(self):
 		fname = QFileDialog.getExistingDirectory()
@@ -160,12 +179,14 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 
 
 def main():
+	try:
+		app = QtWidgets.QApplication(sys.argv)
+		form = ExampleApp()
 	
-	app = QtWidgets.QApplication(sys.argv)
-	form = ExampleApp()
-
-	form.show()
-	app.exec_()
+		form.show()
+		app.exec_()
+	except Exception:
+		print(Exception)
 
 
 if __name__ == '__main__':
