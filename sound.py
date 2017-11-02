@@ -13,10 +13,10 @@ from PyQt5.QtGui import QPixmap,QIcon
 import sys
 import os
 import UIdesign
-pygame.mixer.init()
-pygame.mixer.music.load("lol.wav")
+
+
 # pic = QtGui.Label(window)
-# call(['ffmpeg', '-i', 'lol.mp3','lol.wav'])
+
 # tag = id3.Tag()
 # tag.parse('FindMe.mp3')
 # artist = tag.artist
@@ -33,12 +33,20 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 	
 	def onClick(self):
 
+		if self.currentTrack != self.fileName:
+			self.count=0
+
 		if self.pushButton.state is "Pause":
 			self.pushButton.state= "Play"
 			self.pushButton.setText("||")
 			if self.count==0:
-				pygame.mixer.music.play()
+				wavFile = self.fileName[:len(self.fileName)-4]+'.wav'
+				print(wavFile)
+				call(['ffmpeg', '-i', self.fileName,wavFile])
+				pygame.mixer.music.load(wavFile)
+				self.currentTrack = self.fileName
 				self.count=1
+				pygame.mixer.music.play()
 			else:
 				pygame.mixer.music.unpause()
 		else:
@@ -50,6 +58,7 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 
 		super(ExampleApp,self).__init__(parent)
 
+		self.currentTrack = None
 		self.setupUi(self)
 		self.setUI()
 
@@ -64,18 +73,27 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 		self.pixelImage= self.pixelImage.scaled(64,64)
 		# self.pixelImage.scaledToHeight(30)
 		self.albumArt.setPixmap(self.pixelImage)
-		print(self.MusicVal.setValue(30))
+		print(self.MusicVal.setValue(0))
 
 		self.addDirectory.clicked.connect(self.showDialog)
 		
-
+		self.MusicList.currentItemChanged.connect(self.selectTrack)
 		# fname = QtWidgets.QFileDialog.getOpenFileName(None, 'Open file', '/home')
 		# self.showMaximized()
 
+	def selectTrack(self):
+		self.fileName = self.MusicList.currentItem().text()
+		self.fileName = self.currentFolder+'/'+self.fileName
+		pygame.mixer.music.load(self.fileName)
+		
+
 	def showDialog(self):
 		fname = QFileDialog.getExistingDirectory()
+		self.currentFolder = fname
 		for file in os.listdir(fname):
-			print(file)
+			if file[-4:] =='.mp3':
+				self.MusicList.addItem(file)
+
 		# with folder:
 		# 	data=folder.read()
 		# 	print(data)
@@ -84,6 +102,7 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 
 
 def main():
+	pygame.mixer.init()
 	app = QtWidgets.QApplication(sys.argv)
 	form = ExampleApp()
 
