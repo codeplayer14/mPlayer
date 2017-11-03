@@ -21,8 +21,7 @@ import threading
 # tag = id3.Tag()
 # tag.parse('FindMe.mp3')
 # artist = tag.artist
-# FNULL = open(os.devnull, 'w')	
-# call(['eyeD3','--write-images='+'./','FindMe.mp3'], stdout=FNULL)
+FNULL = open(os.devnull, 'w')	
 
 
 # audio = eyed3.load("cool.mp3")
@@ -89,6 +88,11 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 			self.songStatus= "Play"
 			self.pushButton.setText("||")
 			if self.count==0:
+				imgName = self.MusicList.currentItem().text()
+				call(['eyeD3','--write-images='+'./',imgName], stdout=FNULL)
+				self.pixelImage = QPixmap("FRONT_COVER.jpg")
+				self.albumArt.setPixmap(self.pixelImage)
+				self.pixelImage= self.pixelImage.scaled(191,171)
 				
 				self.MusicVal.setValue(0)
 				dataFetchThread = dataFetcher(self)
@@ -131,10 +135,9 @@ class ExampleApp(QtWidgets.QMainWindow,UIdesign.Ui_MainWindow):
 		self.stopButton.clicked.connect(self.stopMusic)
 
 		self.pushButton.clicked.connect(self.onClick)
-		self.pixelImage = QPixmap('img.jpg')
-		self.pixelImage= self.pixelImage.scaled(128,128)
+		
 		# self.pixelImage.scaledToHeight(30)
-		self.albumArt.setPixmap(self.pixelImage)
+		
 		print(self.MusicVal.setValue(0))
 
 		self.addDirectory.clicked.connect(self.showDialog)
